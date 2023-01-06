@@ -113,7 +113,6 @@ typedef struct
   __IO uint32_t IFCR;  /*!< DMA interrupt flag clear register */
 } DMA_Base_Registers;
 
-
 typedef struct
 {
   __IO uint32_t ISR;   /*!< BDMA interrupt status register */

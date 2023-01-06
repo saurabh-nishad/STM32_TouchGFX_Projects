@@ -21,10 +21,12 @@
 #include "crc.h"
 #include "dma.h"
 #include "i2c.h"
+#include "rtc.h"
 #include "spi.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
+#include "app_touchgfx.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -32,7 +34,6 @@
 #include "string.h"
 #include "MB1642BDisplayDriver.h"
 #include "mpu6050.h"
-#include "snow_tiger.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -77,6 +78,9 @@ int main(void)
 
   /* USER CODE END 1 */
 
+  /* Enable I-Cache---------------------------------------------------------*/
+  SCB_EnableICache();
+
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
@@ -102,18 +106,18 @@ int main(void)
   MX_DMA_Init();
   MX_TIM6_Init();
   MX_I2C1_Init();
+  MX_RTC_Init();
+  MX_TouchGFX_Init();
   /* USER CODE BEGIN 2 */
-  printf_log("------TouchGFX Workshop------", LOG_INFO);
-  printf_log("-----------------------------", LOG_WARN);
-  printf_log("Initializing Display Driver...", LOG_INFO);
-
-  MB1642BDisplayDriver_Init();
-  MB1642BDisplayDriver_DisplayReset();
-  MB1642BDisplayDriver_DisplayInit();
-  MB1642BDisplayDriver_DisplayOn();
+//  printf_log("------TouchGFX Workshop------", LOG_INFO);
+//  printf_log("-----------------------------", LOG_WARN);
+//  printf_log("Initializing Display Driver...", LOG_INFO);
+//
+//  MB1642BDisplayDriver_Init();
+//  MB1642BDisplayDriver_DisplayReset();
+//  MB1642BDisplayDriver_DisplayInit();
+//  MB1642BDisplayDriver_DisplayOn();
 //  test();
-
-  Display_Bitmap((uint16_t *)&waveshare, 0, 0, 70, 70);
 //  while(MPU6050_Init(&hi2c1) == 1);
 //  printf_log("MPU6050 Initialized successfully...", LOG_INFO);
 
@@ -141,11 +145,11 @@ int main(void)
 //	HAL_Delay (100);
     /* USER CODE END WHILE */
 
+  MX_TouchGFX_Process();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
 }
-
 
 /**
   * @brief System Clock Configuration
@@ -174,9 +178,10 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_DIV1;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 4;

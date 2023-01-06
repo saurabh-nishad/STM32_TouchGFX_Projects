@@ -111,12 +111,10 @@ volatile uint8_t IsTransmittingBlock_;
 void Display_Bitmap(const uint16_t *bitmap, uint16_t posx, uint16_t posy, uint16_t sizex, uint16_t sizey)
 {
 	IsTransmittingBlock_ = 1;
-	__HAL_SPI_ENABLE(&hspi1); // Enables SPI peripheral
 	uint8_t command = DCS_WRITE_MEMORY_START;
 
 	// Define the display area
 	Display_Set_Area(posx, posy, posx+sizex-1, posy+sizey-1);
-
 
 	// Reset the nCS pin
 	DISPLAY_CSX_GPIO_Port->BSRR = (uint32_t)DISPLAY_CSX_Pin << 16U;
@@ -132,49 +130,12 @@ void Display_Bitmap(const uint16_t *bitmap, uint16_t posx, uint16_t posy, uint16
 	DISPLAY_DCX_GPIO_Port->BSRR = DISPLAY_DCX_Pin;
 
 	// Set the SPI in 16-bit mode to match endianess
-	__HAL_SPI_DISABLE(&hspi1); // Disable SPI peripheral
-	hspi1.Instance->CFG1 |= SPI_DATASIZE_16BIT;
-	__HAL_SPI_ENABLE(&hspi1);
+	HAL_SPI_DeInit(&hspi1); // Disable SPI peripheral
+	hspi1.Init.DataSize =  SPI_DATASIZE_16BIT;
+	HAL_SPI_Init(&hspi1);
 
-	HAL_SPI_Transmit_DMA(&hspi1, (uint8_t* )bitmap, sizex*sizey);
-
-	__HAL_SPI_DISABLE(&hspi1); // Disable SPI peripheral
-	hspi1.Instance->CFG1 = SPI_DATASIZE_8BIT;
-	__HAL_SPI_ENABLE(&hspi1);
-
-//	// Disable spi peripherals
-//	__HAL_SPI_DISABLE(&hspi1);
-//	__HAL_DMA_DISABLE(&hdma_spi1_tx);
-//
-//	hspi1.TxXferCount = (hspi1.TxXferCount + (uint16_t) 1UL) >> 1UL;
-//
-//	/* Clear TXDMAEN bit*/
-//	CLEAR_BIT(hspi1.Instance->CFG1, SPI_CFG1_TXDMAEN);
-//
-//	/* Clear all flags */
-//	DMA_Base_Registers* tempDMA_reg = (DMA_Base_Registers *)hdma_spi1_tx.StreamBaseAddress;
-//	tempDMA_reg->IFCR = 0x3FUL << (hdma_spi1_tx.StreamIndex & 0x1FU);
-////
-//    /* Configure DMA Stream data length */
-//    ((DMA_Stream_TypeDef *)hdma_spi1_tx.Instance)->NDTR = sizex*sizey;
-//
-//    /* Configure DMA Stream destination address */
-//    ((DMA_Stream_TypeDef *)hdma_spi1_tx.Instance)->PAR = (uint32_t)&hspi1.Instance->TXDR;
-//
-//    /* Configure DMA Stream source address */
-//    ((DMA_Stream_TypeDef *)hdma_spi1_tx.Instance)->M0AR = (uint32_t)bitmap;
-//
-////	/* Disable the transfer half complete interrupt */
-////	__HAL_DMA_DISABLE_IT(&hdma_spi1_tx, DMA_IT_HT);
-////	/* Enable the transfer complete interrupt */
-////	__HAL_DMA_ENABLE_IT(&hdma_spi1_tx, (DMA_IT_TC | DMA_IT_TE | DMA_IT_DME));
-//
-//	/* Enable the Peripherals */
-//	__HAL_DMA_ENABLE(&hdma_spi1_tx);
-//	__HAL_SPI_ENABLE(&hspi1);
-//
-//	/* Enable Tx DMA Request */
-//	SET_BIT(hspi1.Instance->CFG1, SPI_CFG1_TXDMAEN);
+	__NOP();
+	HAL_SPI_Transmit_DMA(&hspi1, (uint8_t *)bitmap, sizex*sizey*2);
 }
 
 void HAL_GPIO_EXTI_Rising_Callback(uint16_t GPIO_Pin)
@@ -257,43 +218,22 @@ void touchgfxDisplayDriverTransmitBlock(const uint8_t* pixels, uint16_t x, uint1
 
 void MB1642BDisplayDriver_DMACallback(void)
 {
-//  /* Transfer Complete Interrupt management ***********************************/
-//  if ((0U != (DMA1->ISR & (DMA_FLAG_TC1))) && (0U != (hdma_spi1_tx.Instance->CCR & DMA_IT_TC)))
-//  {
-//    /* Disable the transfer complete and error interrupt */
-//    __HAL_DMA_DISABLE_IT(&hdma_spi1_tx, DMA_IT_TE | DMA_IT_TC);
-//
-//    /* Clear the transfer complete flag */
-//    __HAL_DMA_CLEAR_FLAG(&hdma_spi1_tx, DMA_FLAG_TC1);
-//
-//    IsTransmittingBlock_ = 0;
-//
-//    // Wait until the bus is not busy before changing configuration
-//    // SPI is busy in communication or Tx buffer is not empty
-//    while(((hspi1.Instance->SR) & SPI_FLAG_BSY) != RESET) { }
-//
-    // Set the nCS
-    DISPLAY_CSX_GPIO_Port->BSRR = DISPLAY_CSX_Pin;
+	IsTransmittingBlock_ = 0;
 
-    // Go back to 8-bit mode
-    hspi1.Instance->CFG1 = SPI_DATASIZE_8BIT;
+	//	SPI is busy in communication or Tx buffer is not empty
+	//	while(hspi1.Instance->SR != HAL_SPI_STATE_READY) { }
 
-    // Signal Transfer Complete to TouchGFX
-    DisplayDriver_TransferCompleteCallback();
-//  }
-//    /* Transfer Error Interrupt management **************************************/
-//  else if ((0U != (DMA1->ISR & (DMA_FLAG_TC1))) && (0U != (hdma_spi1_tx.Instance->CCR & DMA_IT_TE)))
-//  {
-//    /* When a DMA transfer error occurs */
-//    /* A hardware clear of its EN bits is performed */
-//    /* Disable ALL DMA IT */
-//    __HAL_DMA_DISABLE_IT(&hdma_spi1_tx, (DMA_IT_TC | DMA_IT_HT | DMA_IT_TE));
-//
-//    /* Clear all flags */
-//    __HAL_DMA_CLEAR_FLAG(&hdma_spi1_tx, DMA_FLAG_GI1 );
-//
-//    assert(0);  // Halting program - Transfer Error Interrupt received.
-//  }
+	// Set the nCS
+	DISPLAY_CSX_GPIO_Port->BSRR = DISPLAY_CSX_Pin;
+
+	// Set the SPI in 16-bit mode to match endianess
+	HAL_SPI_DeInit(&hspi1); // Disable SPI peripheral
+	hspi1.Init.DataSize =  SPI_DATASIZE_8BIT;
+	HAL_SPI_Init(&hspi1);
+	__NOP();
+
+	// Signal Transfer Complete to TouchGFX
+	DisplayDriver_TransferCompleteCallback();
 }
 
 
